@@ -1,6 +1,21 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { TRAINS, Train, loadSelectedTrain, saveSelectedTrain } from './store';
 
 export default function InputScreen() {
+  const [selectedTrain, setSelectedTrain] = useState<Train>(TRAINS[0]);
+
+  // 画面を開いたとき保存済みの電車を読み込む
+  useEffect(() => {
+    loadSelectedTrain().then(setSelectedTrain);
+  }, []);
+
+  // 電車を選んだとき保存する
+  const handleSelectTrain = (train: Train) => {
+    setSelectedTrain(train);
+    saveSelectedTrain(train);
+  };
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
@@ -8,44 +23,35 @@ export default function InputScreen() {
         <Text style={styles.subText}>電車を選ぶ＋バイトがあれば前日に追加</Text>
       </View>
 
-      {/* 電車選択 */}
       <Text style={styles.sectionLabel}>帰りの電車を選ぶ</Text>
-      <View style={[styles.trainOption, styles.trainSelected]}>
-        <View>
-          <Text style={styles.trainDep}>16:55発 → 快速急行</Text>
-          <Text style={styles.trainArr}>乗換1回 · 所要46分</Text>
-        </View>
-        <View style={styles.trainBadgeSelected}>
-          <Text style={styles.trainBadgeTextSelected}>帰宅 18:42</Text>
-        </View>
-      </View>
-      <View style={styles.trainOption}>
-        <View>
-          <Text style={styles.trainDep}>17:25発 → 急行</Text>
-          <Text style={styles.trainArr}>乗換1回 · 所要47分</Text>
-        </View>
-        <View style={styles.trainBadge}>
-          <Text style={styles.trainBadgeText}>帰宅 19:12</Text>
-        </View>
-      </View>
-      <View style={styles.trainOption}>
-        <View>
-          <Text style={styles.trainDep}>17:52発 → 普通</Text>
-          <Text style={styles.trainArr}>乗換なし · 所要46分</Text>
-        </View>
-        <View style={styles.trainBadge}>
-          <Text style={styles.trainBadgeText}>帰宅 19:38</Text>
-        </View>
-      </View>
+      {TRAINS.map((train) => {
+        const isSelected = train.id === selectedTrain.id;
+        return (
+          <TouchableOpacity
+            key={train.id}
+            style={[styles.trainOption, isSelected && styles.trainSelected]}
+            onPress={() => handleSelectTrain(train)}
+          >
+            <View>
+              <Text style={styles.trainDep}>{train.dep}</Text>
+              <Text style={styles.trainArr}>{train.info}</Text>
+            </View>
+            <View style={isSelected ? styles.trainBadgeSelected : styles.trainBadge}>
+              <Text style={isSelected ? styles.trainBadgeTextSelected : styles.trainBadgeText}>
+                帰宅 {train.arrivalTime}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        );
+      })}
 
-      {/* バイト */}
       <Text style={styles.sectionLabel}>明日のバイト（任意）</Text>
       <View style={styles.card}>
         <View style={styles.timeRow}>
           <Text style={styles.timeRowLabel}>開始</Text>
           <Text style={styles.timeRowEmpty}>-- : --</Text>
         </View>
-        <View style={styles.timeRow}>
+        <View style={[styles.timeRow, { borderBottomWidth: 0 }]}>
           <Text style={styles.timeRowLabel}>終了</Text>
           <Text style={styles.timeRowEmpty}>-- : --</Text>
         </View>

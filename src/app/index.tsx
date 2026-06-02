@@ -1,6 +1,18 @@
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { loadSelectedTrain, Train, TRAINS } from './store';
 
 export default function TodayScreen() {
+  const [selectedTrain, setSelectedTrain] = useState<Train>(TRAINS[0]);
+
+  // 今日タブを開くたびに最新の電車情報を読み込む
+  useFocusEffect(
+    useCallback(() => {
+      loadSelectedTrain().then(setSelectedTrain);
+    }, [])
+  );
+
   return (
     <ScrollView style={styles.container}>
 
@@ -13,8 +25,8 @@ export default function TodayScreen() {
       {/* 帰宅予定カード */}
       <View style={styles.homeCard}>
         <Text style={styles.homeCardLabel}>帰宅予定</Text>
-        <Text style={styles.homeCardTime}>18:42</Text>
-        <Text style={styles.homeCardSub}>快速急行 16:55発 → 帰宅</Text>
+        <Text style={styles.homeCardTime}>{selectedTrain.arrivalTime}</Text>
+        <Text style={styles.homeCardSub}>{selectedTrain.dep} → 帰宅</Text>
       </View>
 
       {/* 授業 */}
@@ -32,7 +44,7 @@ export default function TodayScreen() {
       {/* 帰宅後ルーティン */}
       <Text style={styles.sectionLabel}>帰宅後のルーティン</Text>
       <View style={styles.timelineItem}>
-        <Text style={styles.timeText}>18:42 〜 19:30</Text>
+        <Text style={styles.timeText}>{selectedTrain.arrivalTime} 〜 19:30</Text>
         <Text style={styles.labelText}>🛋 自由時間</Text>
         <Text style={styles.subText}>勉強・趣味・休憩など</Text>
       </View>
