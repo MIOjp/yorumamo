@@ -1,17 +1,25 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { loadSelectedTrain, Train, TRAINS } from './store';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { calcRoutine, loadSelectedTrain, loadSettings, Routine, Train, TRAINS } from './store';
 
 export default function TodayScreen() {
   const [selectedTrain, setSelectedTrain] = useState<Train>(TRAINS[0]);
+  const [routines, setRoutines] = useState<Routine[]>([]);
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
 
-  // 今日タブを開くたびに最新の電車情報を読み込む
   useFocusEffect(
     useCallback(() => {
-      loadSelectedTrain().then(setSelectedTrain);
+      Promise.all([loadSelectedTrain(), loadSettings()]).then(([train, settings]) => {
+        setSelectedTrain(train);
+        setRoutines(calcRoutine(train.arrivalTime, settings));
+      });
     }, [])
   );
+
+  const toggleOpen = (index: number) => {
+    setOpenIndex(openIndex === index ? null : index);
+  };
 
   return (
     <ScrollView style={styles.container}>
@@ -43,33 +51,47 @@ export default function TodayScreen() {
 
       {/* 帰宅後ルーティン */}
       <Text style={styles.sectionLabel}>帰宅後のルーティン</Text>
-      <View style={styles.timelineItem}>
-        <Text style={styles.timeText}>{selectedTrain.arrivalTime} 〜 19:30</Text>
-        <Text style={styles.labelText}>🛋 自由時間</Text>
-        <Text style={styles.subText}>勉強・趣味・休憩など</Text>
-      </View>
-      <View style={styles.timelineItem}>
-        <Text style={styles.timeText}>19:30 までに</Text>
-        <Text style={styles.labelText}>🍽️ 夕ごはん</Text>
-        <Text style={styles.subText}>就寝3時間前に終える</Text>
-      </View>
-      <View style={styles.timelineItem}>
-        <Text style={styles.timeText}>21:00 までに</Text>
-        <Text style={styles.labelText}>🛁 お風呂（38〜40℃）</Text>
-        <Text style={styles.subText}>就寝90分前に入ると寝つき改善</Text>
-      </View>
-      <View style={styles.timelineItem}>
-        <Text style={styles.timeText}>21:30</Text>
-        <Text style={styles.labelText}>📵 スマホをオフ</Text>
-      </View>
-      <View style={styles.timelineItem}>
-        <Text style={styles.timeText}>22:00</Text>
-        <Text style={styles.labelText}>💡 照明を暗くする</Text>
-      </View>
-      <View style={styles.timelineItem}>
-        <Text style={styles.timeText}>22:30</Text>
-        <Text style={styles.labelText}>🌙 就寝</Text>
-      </View>
+      {routines.map((routine, index) => {
+        const isOpen = openIndex === index;
+        return (
+          <TouchableOpacity
+            key={index}
+            style={styles.timelineItem}
+            onPress={() => toggleOpen(index)}
+            activeOpacity={0.8}
+          >
+            {/* 時刻とラベル */}
+            <Text style={styles.timeText}>{routine.time}</Text>
+            <Text style={styles.labelText}>{routine.label}</Text>
+
+            {/* 就寝まで◯分・理想◯分前 */}
+            {routine.minsUntilSleep > 0 && (
+              <View style={styles.countRow}>
+                <Text style={styles.countText}>
+                  ⏰ 就寝まで{routine.minsUntilSleep}分
+                </Text>
+                {routine.idealMins && (
+                  <Text style={styles.idealText}>
+                    　理想：{routine.idealMins}分前
+                  </Text>
+                )}
+              </View>
+            )}
+
+            {/* 科学的解説（タップで開く） */}
+            {isOpen && routine.science && (
+              <View style={styles.scienceBox}>
+                <Text style={styles.scienceText}>🔬 {routine.science}</Text>
+              </View>
+            )}
+
+            {/* タップヒント */}
+            {routine.science && (
+              <Text style={styles.tapHint}>{isOpen ? '▲ 閉じる' : '▼ 解説を見る'}</Text>
+            )}
+          </TouchableOpacity>
+        );
+      })}
 
     </ScrollView>
   );
@@ -143,10 +165,42 @@ const styles = StyleSheet.create({
   labelText: {
     fontSize: 15,
     fontWeight: '500',
+    marginBottom: 4,
   },
   subText: {
     fontSize: 12,
     color: '#666',
     marginTop: 2,
+  },
+  countRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  countText: {
+    fontSize: 12,
+    color: '#185FA5',
+    fontWeight: '500',
+  },
+  idealText: {
+    fontSize: 12,
+    color: '#888',
+  },
+  scienceBox: {
+    marginTop: 10,
+    backgroundColor: '#f0f4ff',
+    borderRadius: 8,
+    padding: 10,
+  },
+  scienceText: {
+    fontSize: 12,
+    color: '#444',
+    lineHeight: 18,
+  },
+  tapHint: {
+    fontSize: 11,
+    color: '#aaa',
+    marginTop: 6,
+    textAlign: 'right',
   },
 });
